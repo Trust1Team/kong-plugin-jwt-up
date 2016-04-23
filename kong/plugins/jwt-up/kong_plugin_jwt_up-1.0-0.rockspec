@@ -1,7 +1,7 @@
 package = "kong_plugin_jwt_up"
 version = "1.0-0"
 source = {
-  url = "https://github.com/Trust1Team/kong-plugin-jwt-up",
+  url = "git://github.com/Trust1Team/kong-plugin-jwt-up",
   tag = "v1.0.0"
 }
 description = {
