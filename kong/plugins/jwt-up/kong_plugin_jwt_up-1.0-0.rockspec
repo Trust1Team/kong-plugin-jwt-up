@@ -6,7 +6,7 @@ source = {
 }
 description = {
   summary = "The Kong JWT-Upstream plugin.",
-  license = "MIT/X11"
+  license = "MIT"
 }
 dependencies = {
   "lua ~> 5.1"
@@ -14,8 +14,8 @@ dependencies = {
 build = {
   type = "builtin",
   modules = {
-    ["kong.plugins.jwt-up.handler"] = "/kong/plugins/jwt-up/handler.lua",
-    ["kong.plugins.jwt-up.schema"] = "/kong/plugins/jwt-up/schema.lua",
-    ["kong.plugins.jwt-up.jwt_parser"] = "/kong/plugins/jwt-up/parser.lua"
+    ["kong.plugins.jwt-up.handler"] = "kong/plugins/jwt-up/handler.lua",
+    ["kong.plugins.jwt-up.schema"] = "kong/plugins/jwt-up/schema.lua",
+    ["kong.plugins.jwt-up.jwt_parser"] = "kong/plugins/jwt-up/parser.lua"
   }
 }
