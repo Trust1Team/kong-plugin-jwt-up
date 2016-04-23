@@ -2,7 +2,7 @@ package = "kong_plugin_jwt_up"
 version = "1.0-0"
 supported_platforms = {"linux", "macosx"}
 source = {
-  url = "git://github.com/Trust1Team/kong-plugin-jwt-up/kong-plugin-jwt-up.zip",
+  url = "git://github.com/Trust1Team/kong-plugin-jwt-up/archive/1.0.0.zip",
   tag = "1.0.0"
 }
 description = {
