@@ -22,7 +22,7 @@ More information can be found on the [jwt-up wiki page][jwt-up-doc]
 
 ## Summary
 
-TBD
+Only works from Kong 0.8.0
 
 ## Roadmap
 

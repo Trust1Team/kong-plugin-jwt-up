@@ -1,4 +1,4 @@
-local spec_helper = require "spec.spec_helpers"
+local spec_helper = require "test.spec_helpers"
 local http_client = require "kong.tools.http_client"
 local fixtures = require "spec.plugins.jwt-up.fixtures"
 local json = require "cjson"
