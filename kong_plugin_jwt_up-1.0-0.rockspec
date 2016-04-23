@@ -22,8 +22,8 @@ dependencies = {
 build = {
   type = "builtin",
   modules = {
-    ["kong.plugins.jwt-up.handler"] = "kong/plugins/jwt-up/handler.lua",
-    ["kong.plugins.jwt-up.schema"] = "kong/plugins/jwt-up/schema.lua",
-    ["kong.plugins.jwt-up.jwt_parser"] = "kong/plugins/jwt-up/jwt_parser.lua"
+    ["kong.plugins.jwt-up.handler"] = "handler.lua",
+    ["kong.plugins.jwt-up.schema"] = "schema.lua",
+    ["kong.plugins.jwt-up.jwt_parser"] = "jwt_parser.lua"
   }
 }
