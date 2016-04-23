@@ -1,4 +1,4 @@
-package = "kong_plugin_jwt_up"
+package = "kong-plugin-jwt-up"
 version = "1.1-0"
 supported_platforms = {"linux", "macosx"}
 source = {
