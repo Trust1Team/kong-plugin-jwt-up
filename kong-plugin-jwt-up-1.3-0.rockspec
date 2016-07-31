@@ -26,7 +26,7 @@ build = {
   modules = {
     ["kong.plugins.jwt-up.handler"] = "src/handler.lua",
     ["kong.plugins.jwt-up.schema"] = "src/schema.lua",
-    ["kong.plugins.jwt-up.jwt_parser"] = "src/jwt_parser.lua"
+    ["kong.plugins.jwt-up.jwt_parser"] = "src/jwt_parser.lua",
     ["kong.plugins.jwt-up.fixtures"] = "src/fixtures.lua"
   }
 }
