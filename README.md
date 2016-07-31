@@ -22,11 +22,23 @@ More information can be found on the [jwt-up wiki page][jwt-up-doc]
 
 ## Summary
 
-Only works from Kong 0.8.0
+Only works from Kong 0.8.0.
+You can not use the JWT-up plugin in combination with the JWT plugin. This is because the JWT-up by default validates HS256 incoming JWT and implicitly generates a RS256 token for upstream APIs.
+The JWT-up can be used in order to have 2 types of consumers:
+- consumer applications, using a key-auth policy to reqeust a service
+- end-user consumers, using a consumer application, in order to request a service
+
+Both authentication means can be different:
+- consumer applications: uses only key-auth
+- end-user consumer: uses JWT received after successful login
+
+Both will result - after applying the JWT-up - in a RS256 JWT - enriched - send to upstream API.
 
 ## Roadmap
 
-TBD
+Update to Kong 0.9.0
+At the moment we need to provide the certificates hardcodes in the fixtures files. 
+This is due to a cert upload issue we have using Kong 0.8.0
 
 ## Development
 

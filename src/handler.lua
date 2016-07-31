@@ -4,13 +4,14 @@ local cache = require "kong.tools.database_cache"
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
 local jwt_encoder = require "kong.plugins.jwt-up.jwt_parser"
+local fixtures = require "kong.plugins.jwt-up.fixtures"
 local string_format = string.format
 local ngx_re_gmatch = ngx.re.gmatch
 local utils = require "kong.tools.utils"
 
 local CONSUMER_ID = "x-consumer-id"
 local AUTHORIZATION = "Authorization"
-local DEFAULT_ALG = "HS256"
+local DEFAULT_ALG = "RS256"
 local EMPTY_VALUE = "none"
 
 local JwtUpHandler = BasePlugin:extend()
@@ -40,13 +41,13 @@ local claimset_all = {
     CONSUMER_USERNAME = "X-Consumer-Username",
     CREDENTIAL_USERNAME = "X-Credential-Username",
     CONSUMER_GROUPS = "X-Consumer-Groups",
-    CONSIMER_JWT_KEY = "X-Cosumer-JWT-Key",
     OAUTH2_SCOPES = "X-Authenticated-Scope",
     OAUTH2_AUTHENTICATED_USER = "X-Authenticated-Userid"
 }
 
 -- Shared claims to add when no JWT is already in the header
 local claimset_shared = {
+    JWT_ISSUER = "X-JWT-Issuer",
     JWT_ISS = "iss",
     JWT_AUD = "aud",
     JWT_EXP = "exp",
@@ -57,7 +58,7 @@ local claimset_shared = {
 
 local function generate_jwt_basic(conf)
     local data = {}
-    data[claimset_shared.JWT_ISS] = conf.issuer_url or EMPTY_VALUE
+    data[claimset_shared.JWT_ISSUER] = conf.issuer_url or EMPTY_VALUE
     data[claimset_shared.JWT_AUD] = ngx.var.upstream_host
     data[claimset_shared.JWT_EXP] = (get_now() + (conf.token_expiration * 60 * 1000)) or EMPTY_VALUE
     data[claimset_shared.JWT_JTI] = utils.random_string()
@@ -187,19 +188,20 @@ local function generate_token(request,conf)
             return responses.send_HTTP_FORBIDDEN(string_format("Could not find consumer for '%s=%s'", conf.key_claim_name, jwt_secret_key))
         end
 
-        -- Enrich upstream JWT and sign with HS256
+        -- Enrich upstream JWT and sign with RS256
         -- compose upstream JWT
         for _,key in pairs(claimset_all) do
             local val = ngx.req.get_headers()[key]
             claims[key] = val or EMPTY_VALUE
         end
-        claims[claimset_all.CONSIMER_JWT_KEY] = jwt_secret.key
-        local sortedClaims = sort(claims)
+        claims[claimset_shared.JWT_ISS] = jwt_secret.key
+        --irrelevant to sort json
+        --local sortedClaims = sort(claims)
 
         -- Encode and sign
         local alg = DEFAULT_ALG
-        local header = {typ = "JWT", alg = alg}
-        return jwt_encoder.encode(sortedClaims,jwt_secret_value,alg,header)
+        local header = {typ = "JWT", alg = alg, x5u = conf.x5u_url}
+        return jwt_encoder.encode(claims,fixtures.rs256_private_key,alg,header)
     end
 
     -- Get consumer_id
@@ -223,13 +225,18 @@ local function generate_token(request,conf)
                 local val = ngx.req.get_headers()[key]
                 data[key] = val or EMPTY_VALUE
             end
-            data[claimset_all.CONSIMER_JWT_KEY] = jwtRecord.key
-            local sortedData = sort(data)
+
+            -- set iss value to consumer key
+            data[claimset_shared.JWT_ISS] = jwtRecord.key
+            --[[data[claimset_all.JWT_ISSUER] = jwtRecord.key]]
+            --[[local sortedData = sort(data)]]
 
             -- Encode and sign
             local alg = DEFAULT_ALG
-            local header = {typ = "JWT", alg = alg}
-            return jwt_encoder.encode(sortedData,jwtRecord.secret,alg,header)
+            local header = {typ = "JWT", alg = alg, x5u = conf.x5u_url}
+            -- hard-code key until Kong 0.9.0
+            --return jwt_encoder.encode(sortedData,jwtRecord.secret,alg,header)
+            return jwt_encoder.encode(data,fixtures.rs256_private_key,alg,header)
         else
 
             -- no JWT for consumer, JWT is irrelevant
