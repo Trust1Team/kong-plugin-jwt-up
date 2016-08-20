@@ -40,9 +40,9 @@ Update to Kong 0.9.0
 At the moment we need to provide the certificates hardcodes in the fixtures files. 
 This is due to a cert upload issue we have using Kong 0.8.0
 
-## Development
+## Release Notes v1.4.0
+Update JWT time to use ngx.time to be compliant with epoch spec.
 
-TBD
 
 ## License
 
