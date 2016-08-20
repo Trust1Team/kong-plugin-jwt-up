@@ -60,7 +60,7 @@ local function generate_jwt_basic(conf)
     local data = {}
     data[claimset_shared.JWT_ISSUER] = conf.issuer_url or EMPTY_VALUE
     data[claimset_shared.JWT_AUD] = ngx.var.upstream_host
-    data[claimset_shared.JWT_EXP] = (get_now() + (conf.token_expiration * 60 * 1000)) or EMPTY_VALUE
+    data[claimset_shared.JWT_EXP] = (get_now() + (conf.token_expiration * 60)) or EMPTY_VALUE
     data[claimset_shared.JWT_JTI] = utils.random_string()
     data[claimset_shared.JWT_IAT] = get_now()
     data[claimset_shared.JWT_NBF] = get_nbf()
