@@ -195,9 +195,13 @@ local function generate_token(request,conf)
             local val = ngx.req.get_headers()[key]
             claims[key] = val or EMPTY_VALUE
         end
+
         claims[claimset_shared.JWT_ISS] = jwt_secret.key
-        --irrelevant to sort json
-        --local sortedClaims = sort(claims)
+        claims[claimset_shared.JWT_AUD] = ngx.var.upstream_host
+        claims[claimset_shared.JWT_EXP] = (get_now() + (conf.token_expiration * 60)) or EMPTY_VALUE
+        claims[claimset_shared.JWT_JTI] = utils.random_string()
+        claims[claimset_shared.JWT_IAT] = get_now()
+        claims[claimset_shared.JWT_NBF] = get_nbf()
 
         -- Encode and sign
         local alg = DEFAULT_ALG
@@ -229,13 +233,11 @@ local function generate_token(request,conf)
 
             -- set iss value to consumer key
             data[claimset_shared.JWT_ISS] = jwtRecord.key
-            --[[data[claimset_all.JWT_ISSUER] = jwtRecord.key]]
-            --[[local sortedData = sort(data)]]
 
             -- Encode and sign
             local alg = DEFAULT_ALG
             local header = {typ = "JWT", alg = alg, x5u = conf.x5u_url}
-            -- hard-code key until Kong 0.9.0
+
             --return jwt_encoder.encode(sortedData,jwtRecord.secret,alg,header)
             return jwt_encoder.encode(data,fixtures.rs256_private_key,alg,header)
         else
