@@ -26,11 +26,11 @@ end
 local ngx_now = ngx.now
 
 local function get_now()
-    return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
+    return ngx_now() -- time is kept in seconds resolution.
 end
 
 local function get_nbf()
-    return (ngx_now() - 5 * 60) * 1000 -- 5 min. clock skew - can be added to schema later
+    return (ngx_now() - 5 * 60) -- 5 min. clock skew - can be added to schema later
 end
 
 -- Custom claims allowed in the upstream JWT
