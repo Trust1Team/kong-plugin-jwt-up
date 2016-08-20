@@ -23,7 +23,8 @@ function JwtUpHandler:new()
     JwtUpHandler.super.new(self, "jwt-up")
 end
 
-local ngx_now = ngx.now
+-- ngx.now resolution is wrong, better use ngx.time
+local ngx_now = ngx.time
 
 local function get_now()
     return ngx_now() -- time is kept in seconds resolution.
