@@ -23,14 +23,15 @@ function JwtUpHandler:new()
     JwtUpHandler.super.new(self, "jwt-up")
 end
 
-local ngx_now = ngx.now
+-- ngx.now resolution is wrong, better use ngx.time
+local ngx_now = ngx.time
 
 local function get_now()
-    return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
+    return ngx_now() -- time is kept in seconds resolution.
 end
 
 local function get_nbf()
-    return (ngx_now() - 5 * 60) * 1000 -- 5 min. clock skew - can be added to schema later
+    return (ngx_now() - 5 * 60) -- 5 min. clock skew - can be added to schema later
 end
 
 -- Custom claims allowed in the upstream JWT
@@ -60,7 +61,7 @@ local function generate_jwt_basic(conf)
     local data = {}
     data[claimset_shared.JWT_ISSUER] = conf.issuer_url or EMPTY_VALUE
     data[claimset_shared.JWT_AUD] = ngx.var.upstream_host
-    data[claimset_shared.JWT_EXP] = (get_now() + (conf.token_expiration * 60 * 1000)) or EMPTY_VALUE
+    data[claimset_shared.JWT_EXP] = (get_now() + (conf.token_expiration * 60)) or EMPTY_VALUE
     data[claimset_shared.JWT_JTI] = utils.random_string()
     data[claimset_shared.JWT_IAT] = get_now()
     data[claimset_shared.JWT_NBF] = get_nbf()
