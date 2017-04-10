@@ -133,22 +133,12 @@ local function generate_token(request,conf)
 
     -- Validate token again (can we somehow see if JWT policy has been applied? If so we can skip validation)
     if token then
-        -- Decode token to find out who the consumer is
-        local jwt, err = jwt_encoder:new(token)
-        if err then
-            return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-        end
 
-        local claims = jwt.claims
-
-        local jwt_secret_key = claims[conf.jwt_in_key_claim_name]
-        if not jwt_secret_key then
-            return responses.send_HTTP_UNAUTHORIZED("No mandatory '"..conf.jwt_in_key_claim_name.."' in claims")
-        end
-
-        -- Retrieve the secret
-        local jwt_secret = cache.get_or_set(cache.jwtauth_credential_key(jwt_secret_key), function()
-            local rows, err = singletons.dao.jwt_secrets:find_all {key = jwt_secret_key}
+-- PC : 20170330 : BEGIN
+-- check if token is an access token --> try to find the token as an access_token
+        local access_token = cache.get_or_set(cache.oauth2_token_key(token), function()
+            -- find_all because access_token field is not a primary key
+            local rows, err = singletons.dao.oauth2_tokens:find_all {access_token = token}
             if err then
                 return responses.send_HTTP_INTERNAL_SERVER_ERROR()
             elseif #rows > 0 then
@@ -156,57 +146,89 @@ local function generate_token(request,conf)
             end
         end)
 
-        if not jwt_secret then
-            return responses.send_HTTP_FORBIDDEN("No credentials found for given '"..conf.jwt_in_key_claim_name.."'")
-        end
-
-        -- Verify "alg"
-        if jwt.header.alg ~= jwt_secret.algorithm then
-            return responses.send_HTTP_FORBIDDEN("Invalid algorithm")
-        end
-
-        local jwt_secret_value = jwt_secret.algorithm == "HS256" and jwt_secret.secret or jwt_secret.rsa_public_key
-        if conf.secret_is_base64 then
-            jwt_secret_value = jwt:b64_decode(jwt_secret_value)
-        end
-
-        -- Now verify the JWT signature
-        if not jwt:verify_signature(jwt_secret_value) then
-            return responses.send_HTTP_FORBIDDEN("Invalid signature")
-        end
-
-        -- Retrieve the consumer
-        local consumer = cache.get_or_set(cache.consumer_key(jwt_secret_key), function()
-            local consumer, err = singletons.dao.consumers:find {id = jwt_secret.consumer_id}
+        if not access_token then
+-- assume it's a jwt
+-- PC : 20170330 : END
+        
+            -- Decode token to find out who the consumer is
+            local jwt, err = jwt_encoder:new(token)
             if err then
-                return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+                return responses.send_HTTP_INTERNAL_SERVER_ERROR()
             end
-            return consumer
-        end)
 
-        -- However this should not happen
-        if not consumer then
-            return responses.send_HTTP_FORBIDDEN(string_format("Could not find consumer for '%s=%s'", conf.key_claim_name, jwt_secret_key))
+            local claims = jwt.claims
+
+            local jwt_secret_key = claims[conf.jwt_in_key_claim_name]
+            if not jwt_secret_key then
+                return responses.send_HTTP_UNAUTHORIZED("No mandatory '"..conf.jwt_in_key_claim_name.."' in claims")
+            end
+
+            -- Retrieve the secret
+            local jwt_secret = cache.get_or_set(cache.jwtauth_credential_key(jwt_secret_key), function()
+                local rows, err = singletons.dao.jwt_secrets:find_all {key = jwt_secret_key}
+                if err then
+                    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+                elseif #rows > 0 then
+                    return rows[1]
+                end
+            end)
+
+            if not jwt_secret then
+                return responses.send_HTTP_FORBIDDEN("No credentials found for given '"..conf.jwt_in_key_claim_name.."'")
+            end
+
+            -- Verify "alg"
+            if jwt.header.alg ~= jwt_secret.algorithm then
+                return responses.send_HTTP_FORBIDDEN("Invalid algorithm")
+            end
+
+            local jwt_secret_value = jwt_secret.algorithm == "HS256" and jwt_secret.secret or jwt_secret.rsa_public_key
+            if conf.secret_is_base64 then
+                jwt_secret_value = jwt:b64_decode(jwt_secret_value)
+            end
+
+            -- Now verify the JWT signature
+            if not jwt:verify_signature(jwt_secret_value) then
+                return responses.send_HTTP_FORBIDDEN("Invalid signature")
+            end
+
+            -- Retrieve the consumer
+            local consumer = cache.get_or_set(cache.consumer_key(jwt_secret_key), function()
+                local consumer, err = singletons.dao.consumers:find {id = jwt_secret.consumer_id}
+                if err then
+                    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+                end
+                return consumer
+            end)
+
+            -- However this should not happen
+            if not consumer then
+                return responses.send_HTTP_FORBIDDEN(string_format("Could not find consumer for '%s=%s'", conf.key_claim_name, jwt_secret_key))
+            end
+
+            -- Enrich upstream JWT and sign with RS256
+            -- compose upstream JWT
+            for _,key in pairs(claimset_all) do
+                local val = ngx.req.get_headers()[key]
+                claims[key] = val or EMPTY_VALUE
+            end
+
+            claims[claimset_shared.JWT_ISS] = jwt_secret.key
+            claims[claimset_shared.JWT_AUD] = ngx.var.upstream_host
+            claims[claimset_shared.JWT_EXP] = (get_now() + (conf.token_expiration * 60)) or EMPTY_VALUE
+            claims[claimset_shared.JWT_JTI] = utils.random_string()
+            claims[claimset_shared.JWT_IAT] = get_now()
+            claims[claimset_shared.JWT_NBF] = get_nbf()
+
+            -- Encode and sign
+            local alg = DEFAULT_ALG
+            local header = {typ = "JWT", alg = alg, x5u = conf.x5u_url}
+            return jwt_encoder.encode(claims,fixtures.rs256_private_key,alg,header)
+
+-- PC : 20170330 : BEGIN
         end
+-- PC : 20170330 : END
 
-        -- Enrich upstream JWT and sign with RS256
-        -- compose upstream JWT
-        for _,key in pairs(claimset_all) do
-            local val = ngx.req.get_headers()[key]
-            claims[key] = val or EMPTY_VALUE
-        end
-
-        claims[claimset_shared.JWT_ISS] = jwt_secret.key
-        claims[claimset_shared.JWT_AUD] = ngx.var.upstream_host
-        claims[claimset_shared.JWT_EXP] = (get_now() + (conf.token_expiration * 60)) or EMPTY_VALUE
-        claims[claimset_shared.JWT_JTI] = utils.random_string()
-        claims[claimset_shared.JWT_IAT] = get_now()
-        claims[claimset_shared.JWT_NBF] = get_nbf()
-
-        -- Encode and sign
-        local alg = DEFAULT_ALG
-        local header = {typ = "JWT", alg = alg, x5u = conf.x5u_url}
-        return jwt_encoder.encode(claims,fixtures.rs256_private_key,alg,header)
     end
 
     -- Get consumer_id

@@ -1,9 +1,9 @@
 package = "kong-plugin-jwt-up"
-version = "1.7-0"
+version = "1.7-1"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Trust1Team/kong-plugin-jwt-up",
-  tag = "1.7.0"
+  tag = "1.7.1"
 }
 description = {
   summary = "The Kong JWT-Upstream plugin.",
